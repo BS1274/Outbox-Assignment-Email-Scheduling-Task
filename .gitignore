@@ -17,6 +17,7 @@ coverage/
 *.tsbuildinfo
 
 # Logs & temp files
+.vercel/
 *.log
 npm-debug.log*
 yarn-debug.log*
