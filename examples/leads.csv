@@ -1,0 +1,6 @@
+email,name
+ada@example.com,Ada Lovelace
+grace@example.com,Grace Hopper
+linus@example.com,Linus Torvalds
+ada@example.com,Ada duplicate should be ignored
+not-an-email,skip me

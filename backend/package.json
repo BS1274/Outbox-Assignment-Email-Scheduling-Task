@@ -1,0 +1,48 @@
+{
+  "name": "backend",
+  "private": true,
+  "scripts": {
+    "dev": "tsx watch src/index.ts",
+    "dev:worker": "tsx watch src/worker.ts",
+    "start": "node dist/index.js",
+    "start:worker": "node dist/worker.js",
+    "build": "tsc -p tsconfig.json",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "test": "tsx --test tests/**/*.test.ts",
+    "db:migrate": "prisma migrate dev",
+    "db:deploy": "node -e \"require('dotenv').config({path:require('path').resolve('../.env')}); require('dotenv').config(); const r=require('child_process').spawnSync('npx',['prisma','migrate','deploy'],{stdio:'inherit',env:process.env,shell:true}); process.exit(r.status??1)\"",
+    "db:generate": "prisma generate",
+    "smoke": "tsx src/scripts/smoke.ts",
+    "plan:demo": "tsx src/scripts/explain-plan.ts"
+  },
+  "dependencies": {
+    "@bull-board/api": "^6.7.10",
+    "@bull-board/express": "^6.7.10",
+    "@elastic/elasticsearch": "^8.17.0",
+    "@prisma/client": "^6.6.0",
+    "@types/bcryptjs": "^2.4.6",
+    "bcryptjs": "^3.0.3",
+    "bullmq": "^5.44.0",
+    "cookie-parser": "^1.4.7",
+    "cors": "^2.8.5",
+    "dotenv": "^16.4.7",
+    "express": "^4.21.2",
+    "helmet": "^8.1.0",
+    "ioredis": "^5.6.0",
+    "jsonwebtoken": "^9.0.2",
+    "nodemailer": "^6.10.0",
+    "pino": "^9.6.0",
+    "zod": "^3.24.2"
+  },
+  "devDependencies": {
+    "@types/cookie-parser": "^1.4.8",
+    "@types/cors": "^2.8.17",
+    "@types/express": "^4.17.21",
+    "@types/jsonwebtoken": "^9.0.9",
+    "@types/node": "^22.13.10",
+    "@types/nodemailer": "^6.4.17",
+    "prisma": "^6.6.0",
+    "tsx": "^4.19.3",
+    "typescript": "^5.8.2"
+  }
+}

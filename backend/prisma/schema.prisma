@@ -1,0 +1,102 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// A person who signed in with Google. Slack fields stay empty until they
+// finish the Slack OAuth connect flow. Missing Slack data is normal.
+model User {
+  id               String    @id @default(cuid())
+  googleSub        String?   @unique
+  email            String    @unique
+  passwordHash     String?
+  name             String
+  avatarUrl        String?
+  slackAccessToken String?
+  slackTeamId      String?
+  slackTeamName    String?
+  slackWebhookUrl  String?
+  slackChannel     String?
+  slackConnectedAt DateTime?
+  createdAt        DateTime  @default(now())
+  updatedAt        DateTime  @updatedAt
+  senders          Sender[]
+  campaigns        Campaign[]
+  emails           EmailJob[]
+}
+
+// One Ethereal mailbox. Each sender has its own hourly Redis counter.
+model Sender {
+  id        String     @id @default(cuid())
+  userId    String
+  user      User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  label     String
+  fromName  String
+  fromEmail String
+  smtpHost  String
+  smtpPort  Int
+  smtpUser  String
+  smtpPass  String
+  createdAt DateTime   @default(now())
+  emails    EmailJob[]
+
+  @@index([userId])
+}
+
+model Campaign {
+  id             String     @id @default(cuid())
+  userId         String
+  user           User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  // Optional client retry key. Null is allowed on many rows.
+  idempotencyKey String?
+  subject        String
+  body           String     @db.Text
+  startAt        DateTime
+  delayBetweenMs Int
+  hourlyLimit    Int
+  createdAt      DateTime   @default(now())
+  emails         EmailJob[]
+
+  @@unique([userId, idempotencyKey])
+  @@index([userId, createdAt])
+}
+
+model EmailJob {
+  id                String      @id @default(cuid())
+  userId            String
+  user              User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  campaignId        String
+  campaign          Campaign    @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+  senderId          String
+  sender            Sender      @relation(fields: [senderId], references: [id])
+  toEmail           String
+  subject           String
+  body              String      @db.Text
+  scheduledAt       DateTime
+  sentAt            DateTime?
+  status            EmailStatus @default(scheduled)
+  // One queue job per row. Re-processing this key cannot insert a second row.
+  idempotencyKey    String      @unique
+  attempts          Int         @default(0)
+  lastError         String?
+  providerMessageId String?
+  previewUrl        String?
+  createdAt         DateTime    @default(now())
+  updatedAt         DateTime    @updatedAt
+
+  @@index([userId, status, scheduledAt])
+  @@index([campaignId])
+  @@index([senderId, status])
+}
+
+enum EmailStatus {
+  scheduled
+  sending
+  rescheduled
+  sent
+  failed
+}
