@@ -21,7 +21,13 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
 }
 
 export const api = {
-  config: () => request<{ google: boolean; slack: boolean }>('/api/auth/config'),
+  config: async () => {
+    try {
+      return await request<{ google: boolean; slack: boolean }>('/api/auth/config');
+    } catch {
+      return { google: true, slack: true };
+    }
+  },
   me: () => request<{ user: SessionUser }>('/api/auth/me'),
   logout: () => request<{ ok: boolean }>('/api/auth/logout', { method: 'POST' }),
   login: (credentials: { email: string; password: string }) =>

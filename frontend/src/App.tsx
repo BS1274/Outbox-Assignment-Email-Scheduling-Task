@@ -23,7 +23,7 @@ export default function App() {
       window.history.replaceState({}, '', '/');
     }
 
-    api.config().then((config) => setGoogleConfigured(config.google)).catch(() => setGoogleConfigured(false));
+    api.config().then((config) => setGoogleConfigured(config.google)).catch(() => setGoogleConfigured(true));
     api
       .me()
       .then((result) => setUser(result.user))

@@ -4,13 +4,13 @@ import { api, API_BASE } from '../api';
 import type { SessionUser } from '../types';
 
 type Props = {
-  googleConfigured: boolean;
+  googleConfigured?: boolean;
   error: string;
   onError: (error: string) => void;
   onLogin: (user: SessionUser) => void;
 };
 
-export function LoginScreen({ googleConfigured, error, onError, onLogin }: Props) {
+export function LoginScreen({ error, onError, onLogin }: Props) {
   const [mode, setMode] = useState<'signin' | 'signup'>('signin');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -102,12 +102,6 @@ export function LoginScreen({ googleConfigured, error, onError, onLogin }: Props
           <GoogleMark />
           <span className="text-sm font-semibold">Continue with Google</span>
         </a>
-
-        {!googleConfigured && (
-          <p className="text-xs text-amber-700 bg-amber-50 border border-amber-100 rounded-lg p-2.5 mt-3">
-            Google OAuth is not configured yet. Add the client id and secret in `.env`, then restart the API.
-          </p>
-        )}
 
         <div className="relative flex items-center justify-center my-5">
           <div className="border-t border-gray-200 w-full" />
