@@ -1,4 +1,4 @@
-import { Router } from 'express';
+import { Router, type Request } from 'express';
 import { randomBytes } from 'crypto';
 import bcrypt from 'bcryptjs';
 import { z } from 'zod';
@@ -28,9 +28,27 @@ const loginSchema = z.object({
   password: z.string().min(1, 'Password is required.'),
 });
 
-function frontendRedirect(path: string): string {
-  const url = new URL(env.frontendUrl);
-  const extra = new URL(path, env.frontendUrl);
+function resolveOAuthUrls(req: Request): { callbackUrl: string; frontendUrl: string } {
+  const forwardedHost = (req.headers['x-forwarded-host'] as string) || '';
+  const host = forwardedHost || req.get('host') || '';
+
+  if (host.includes('vercel.app')) {
+    const origin = `https://${host.split(',')[0].trim()}`;
+    return {
+      callbackUrl: `${origin}/api/auth/google/callback`,
+      frontendUrl: origin,
+    };
+  }
+
+  return {
+    callbackUrl: env.googleCallbackUrl,
+    frontendUrl: env.frontendUrl,
+  };
+}
+
+function frontendRedirect(path: string, baseUrl: string = env.frontendUrl): string {
+  const url = new URL(baseUrl);
+  const extra = new URL(path, baseUrl);
   extra.searchParams.forEach((value, key) => url.searchParams.set(key, value));
   return url.toString();
 }
@@ -163,7 +181,7 @@ authRouter.post(
 
 authRouter.get(
   '/google',
-  asyncRoute(async (_req, res) => {
+  asyncRoute(async (req, res) => {
     if (!googleOAuthConfigured) {
       throw new HttpError(
         503,
@@ -171,10 +189,11 @@ authRouter.get(
       );
     }
     const state = randomBytes(24).toString('hex');
-    await appRedis.set(`oauth:google:${state}`, '1', 'EX', 600);
+    const { callbackUrl, frontendUrl } = resolveOAuthUrls(req);
+    await appRedis.set(`oauth:google:${state}`, JSON.stringify({ callbackUrl, frontendUrl }), 'EX', 600);
     const url = new URL('https://accounts.google.com/o/oauth2/v2/auth');
     url.searchParams.set('client_id', env.googleClientId);
-    url.searchParams.set('redirect_uri', env.googleCallbackUrl);
+    url.searchParams.set('redirect_uri', callbackUrl);
     url.searchParams.set('response_type', 'code');
     url.searchParams.set('scope', 'openid email profile');
     url.searchParams.set('state', state);
@@ -189,13 +208,30 @@ authRouter.get(
     const code = typeof req.query.code === 'string' ? req.query.code : '';
     const state = typeof req.query.state === 'string' ? req.query.state : '';
     const denied = typeof req.query.error === 'string' ? req.query.error : '';
+
+    const stateRaw = state ? await appRedis.getdel(`oauth:google:${state}`) : null;
+    let savedCallbackUrl = env.googleCallbackUrl;
+    let savedFrontendUrl = env.frontendUrl;
+    if (stateRaw) {
+      try {
+        const parsed = JSON.parse(stateRaw);
+        if (parsed.callbackUrl) savedCallbackUrl = parsed.callbackUrl;
+        if (parsed.frontendUrl) savedFrontendUrl = parsed.frontendUrl;
+      } catch {
+        // legacy '1' state value
+      }
+    } else {
+      const current = resolveOAuthUrls(req);
+      savedCallbackUrl = current.callbackUrl;
+      savedFrontendUrl = current.frontendUrl;
+    }
+
     if (denied) {
-      res.redirect(frontendRedirect(`/?auth_error=${encodeURIComponent('Google sign-in was cancelled.')}`));
+      res.redirect(frontendRedirect(`/?auth_error=${encodeURIComponent('Google sign-in was cancelled.')}`, savedFrontendUrl));
       return;
     }
-    const stateOk = state ? await appRedis.getdel(`oauth:google:${state}`) : null;
-    if (!code || stateOk !== '1') {
-      res.redirect(frontendRedirect('/?auth_error=Google%20sign-in%20could%20not%20be%20verified.'));
+    if (!code || !stateRaw) {
+      res.redirect(frontendRedirect('/?auth_error=Google%20sign-in%20could%20not%20be%20verified.', savedFrontendUrl));
       return;
     }
 
@@ -206,14 +242,14 @@ authRouter.get(
         code,
         client_id: env.googleClientId,
         client_secret: env.googleClientSecret,
-        redirect_uri: env.googleCallbackUrl,
+        redirect_uri: savedCallbackUrl,
         grant_type: 'authorization_code',
       }),
       signal: AbortSignal.timeout(15000),
     });
     const tokenBody = (await tokenResponse.json()) as { access_token?: string; error?: string };
     if (!tokenResponse.ok || !tokenBody.access_token) {
-      res.redirect(frontendRedirect('/?auth_error=Google%20did%20not%20return%20an%20access%20token.'));
+      res.redirect(frontendRedirect('/?auth_error=Google%20did%20not%20return%20an%20access%20token.', savedFrontendUrl));
       return;
     }
 
@@ -228,7 +264,7 @@ authRouter.get(
       picture?: string;
     };
     if (!profile.sub || !profile.email) {
-      res.redirect(frontendRedirect('/?auth_error=Google%20did%20not%20share%20an%20email%20address.'));
+      res.redirect(frontendRedirect('/?auth_error=Google%20did%20not%20share%20an%20email%20address.', savedFrontendUrl));
       return;
     }
 
@@ -261,8 +297,9 @@ authRouter.get(
       });
     }
 
-    res.cookie(sessionCookieName, signSession(user.id), sessionCookieOptions());
-    res.redirect(frontendRedirect('/'));
+    const isSecure = savedFrontendUrl.startsWith('https://');
+    res.cookie(sessionCookieName, signSession(user.id), sessionCookieOptions(isSecure));
+    res.redirect(frontendRedirect('/', savedFrontendUrl));
   }),
 );
 

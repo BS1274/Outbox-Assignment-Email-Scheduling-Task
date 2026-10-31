@@ -21,7 +21,7 @@ export function readSession(token: string | undefined): string | null {
   }
 }
 
-export function sessionCookieOptions(): {
+export function sessionCookieOptions(isSecure?: boolean): {
   httpOnly: boolean;
   sameSite: 'lax';
   secure: boolean;
@@ -31,7 +31,7 @@ export function sessionCookieOptions(): {
   return {
     httpOnly: true,
     sameSite: 'lax',
-    secure: env.frontendUrl.startsWith('https://'),
+    secure: isSecure !== undefined ? isSecure : (env.frontendUrl.startsWith('https://') || process.env.NODE_ENV === 'production'),
     maxAge: MAX_AGE_MS,
     path: '/',
   };
