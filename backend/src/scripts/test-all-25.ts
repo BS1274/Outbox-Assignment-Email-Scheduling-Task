@@ -16,6 +16,8 @@ import { sendWithSender } from '../lib/mailer';
 import bcrypt from 'bcryptjs';
 import http from 'http';
 
+const TARGET_BASE = (process.env.TEST_TARGET_URL || 'https://frontend-phi-coral-phks8tnvr3.vercel.app').replace(/\/$/, '');
+
 interface TestCase {
   number: number;
   title: string;
@@ -30,14 +32,14 @@ const testCases: TestCase[] = [
     title: 'Google OAuth Login',
     description: 'Verify Google OAuth configuration and validate JWT session resolution for Google-authenticated users.',
     action: async () => {
-      const configRes = await fetch('http://localhost:4000/api/auth/config');
+      const configRes = await fetch(`${TARGET_BASE}/api/auth/config`);
       const config = await configRes.json();
       const user = await prisma.user.findFirst({ where: { googleSub: { not: null } } });
       if (!user) throw new Error('No Google user found in database');
       const token = signSession(user.id);
       const verifiedSub = readSession(token);
       assert.equal(verifiedSub, user.id);
-      const meRes = await fetch('http://localhost:4000/api/auth/me', {
+      const meRes = await fetch(`${TARGET_BASE}/api/auth/me`, {
         headers: { Cookie: `ri_session=${token}` }
       });
       const meData = await meRes.json();
@@ -59,14 +61,14 @@ const testCases: TestCase[] = [
       const user = await prisma.user.findFirst();
       if (!user) throw new Error('No user found');
       const token = signSession(user.id);
-      const logoutRes = await fetch('http://localhost:4000/api/auth/logout', {
+      const logoutRes = await fetch(`${TARGET_BASE}/api/auth/logout`, {
         method: 'POST',
         headers: { Cookie: `ri_session=${token}` }
       });
       assert.equal(logoutRes.status, 200);
       const cookieHeader = logoutRes.headers.get('set-cookie') || '';
       assert.ok(cookieHeader.includes('ri_session=;') || cookieHeader.includes('Expires=Thu, 01 Jan 1970'));
-      const meRes = await fetch('http://localhost:4000/api/auth/me', {
+      const meRes = await fetch(`${TARGET_BASE}/api/auth/me`, {
         headers: { Cookie: 'ri_session=' }
       });
       assert.equal(meRes.status, 401);
@@ -85,7 +87,7 @@ const testCases: TestCase[] = [
     action: async () => {
       const testEmail = `reg_test_${Date.now()}@example.com`;
       const testPass = 'StrongPass123!';
-      const res = await fetch('http://localhost:4000/api/auth/register', {
+      const res = await fetch(`${TARGET_BASE}/api/auth/register`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email: testEmail, password: testPass, name: 'Registration QA' })
@@ -119,7 +121,7 @@ const testCases: TestCase[] = [
         data: { email: testEmail, passwordHash, name: 'Login QA User' }
       });
       try {
-        const loginRes = await fetch('http://localhost:4000/api/auth/login', {
+        const loginRes = await fetch(`${TARGET_BASE}/api/auth/login`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ email: testEmail, password: testPass })
@@ -145,7 +147,7 @@ const testCases: TestCase[] = [
     title: 'Invalid Password Handling',
     description: 'Verify weak passwords rejected on registration and incorrect passwords rejected on login.',
     action: async () => {
-      const weakRes = await fetch('http://localhost:4000/api/auth/register', {
+      const weakRes = await fetch(`${TARGET_BASE}/api/auth/register`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email: `weak_${Date.now()}@test.com`, password: 'short', name: 'Weak Pass' })
@@ -154,7 +156,7 @@ const testCases: TestCase[] = [
       const weakData = await weakRes.json();
       assert.ok(weakData.error.includes('8 characters'));
 
-      const wrongRes = await fetch('http://localhost:4000/api/auth/login', {
+      const wrongRes = await fetch(`${TARGET_BASE}/api/auth/login`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email: 'nonexistent_user_xyz@test.com', password: 'WrongPassword123!' })
@@ -178,14 +180,14 @@ const testCases: TestCase[] = [
     action: async () => {
       const dupEmail = `dup_test_${Date.now()}@example.com`;
       const pass = 'ValidPass123!';
-      const res1 = await fetch('http://localhost:4000/api/auth/register', {
+      const res1 = await fetch(`${TARGET_BASE}/api/auth/register`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email: dupEmail, password: pass, name: 'Original User' })
       });
       assert.equal(res1.status, 201);
 
-      const res2 = await fetch('http://localhost:4000/api/auth/register', {
+      const res2 = await fetch(`${TARGET_BASE}/api/auth/register`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email: dupEmail, password: pass, name: 'Duplicate User' })
@@ -212,7 +214,7 @@ const testCases: TestCase[] = [
       if (!user) throw new Error('No user found');
       const token = signSession(user.id);
       for (let i = 1; i <= 3; i++) {
-        const res = await fetch('http://localhost:4000/api/auth/me', {
+        const res = await fetch(`${TARGET_BASE}/api/auth/me`, {
           headers: { Cookie: `ri_session=${token}` }
         });
         assert.equal(res.status, 200);
@@ -232,9 +234,9 @@ const testCases: TestCase[] = [
     title: 'Protected Dashboard Access',
     description: 'Verify unauthenticated requests to protected endpoints return HTTP 401 Unauthorized.',
     action: async () => {
-      const resEmails = await fetch('http://localhost:4000/api/emails');
+      const resEmails = await fetch(`${TARGET_BASE}/api/emails`);
       assert.equal(resEmails.status, 401);
-      const resCampaigns = await fetch('http://localhost:4000/api/campaigns', {
+      const resCampaigns = await fetch(`${TARGET_BASE}/api/campaigns`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({})
@@ -272,7 +274,7 @@ const testCases: TestCase[] = [
       const user = await prisma.user.findFirst();
       if (!user) throw new Error('No user found');
       const token = signSession(user.id);
-      const resEmptyBody = await fetch('http://localhost:4000/api/campaigns', {
+      const resEmptyBody = await fetch(`${TARGET_BASE}/api/campaigns`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', Cookie: `ri_session=${token}` },
         body: JSON.stringify({ subject: 'Test', body: '', recipients: ['a@b.com'], startAt: new Date().toISOString() })
@@ -281,7 +283,7 @@ const testCases: TestCase[] = [
       const errData = await resEmptyBody.json();
       assert.ok(errData.error.includes('Body is required'));
 
-      const resEmptySubj = await fetch('http://localhost:4000/api/campaigns', {
+      const resEmptySubj = await fetch(`${TARGET_BASE}/api/campaigns`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', Cookie: `ri_session=${token}` },
         body: JSON.stringify({ subject: '', body: 'Body', recipients: ['a@b.com'], startAt: new Date().toISOString() })
@@ -306,7 +308,7 @@ const testCases: TestCase[] = [
       const senders = await ensureSenders(user.id);
       const token = signSession(user.id);
       const startAt = new Date(Date.now() + 60000).toISOString();
-      const res = await fetch('http://localhost:4000/api/campaigns', {
+      const res = await fetch(`${TARGET_BASE}/api/campaigns`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', Cookie: `ri_session=${token}` },
         body: JSON.stringify({
@@ -350,7 +352,7 @@ const testCases: TestCase[] = [
       const user = await prisma.user.findFirst();
       if (!user) throw new Error('No user found');
       const token = signSession(user.id);
-      const res = await fetch('http://localhost:4000/api/emails?bucket=scheduled', {
+      const res = await fetch(`${TARGET_BASE}/api/emails?bucket=scheduled`, {
         headers: { Cookie: `ri_session=${token}` }
       });
       assert.equal(res.status, 200);
@@ -643,18 +645,18 @@ const testCases: TestCase[] = [
     title: 'Bull Board Queue Monitoring',
     description: 'Verify Bull Board UI and metrics API at /admin/queues with Basic authentication.',
     action: async () => {
-      const unauthRes = await fetch('http://localhost:4000/admin/queues');
+      const unauthRes = await fetch(`${TARGET_BASE}/admin/queues`);
       assert.equal(unauthRes.status, 401);
 
       const creds = Buffer.from(`${env.bullBoardUser}:${env.bullBoardPassword}`).toString('base64');
-      const authRes = await fetch('http://localhost:4000/admin/queues/', {
+      const authRes = await fetch(`${TARGET_BASE}/admin/queues`, {
         headers: { Authorization: `Basic ${creds}` }
       });
       assert.equal(authRes.status, 200);
       const html = await authRes.text();
       assert.ok(html.includes('Bull Dashboard') || html.includes('bull-board'));
 
-      const apiRes = await fetch('http://localhost:4000/admin/queues/api/queues', {
+      const apiRes = await fetch(`${TARGET_BASE}/admin/queues/api/queues`, {
         headers: { Authorization: `Basic ${creds}` }
       });
       assert.equal(apiRes.status, 200);
@@ -745,7 +747,7 @@ const testCases: TestCase[] = [
         senderId: senders[0].id
       };
 
-      const res1 = await fetch('http://localhost:4000/api/campaigns', {
+      const res1 = await fetch(`${TARGET_BASE}/api/campaigns`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -758,7 +760,7 @@ const testCases: TestCase[] = [
       const data1 = await res1.json();
       assert.equal(data1.created, true);
 
-      const res2 = await fetch('http://localhost:4000/api/campaigns', {
+      const res2 = await fetch(`${TARGET_BASE}/api/campaigns`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

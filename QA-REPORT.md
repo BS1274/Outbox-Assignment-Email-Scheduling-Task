@@ -2,7 +2,9 @@
 
 **Date of Execution:** October 31, 2026  
 **Auditor / QA Engineer:** Senior QA Engineer & Full-Stack Developer  
-**Environment:** Windows 10/11, Node.js v24.22.1, PostgreSQL 16 (Alpine), Redis 7 (Alpine, AOF enabled), Elasticsearch 8.15.3  
+**Live Production URL:** [https://frontend-phi-coral-phks8tnvr3.vercel.app](https://frontend-phi-coral-phks8tnvr3.vercel.app)  
+**GitHub Repository:** [https://github.com/BS1274/Outbox-Assignment-Email-Scheduling-Task](https://github.com/BS1274/Outbox-Assignment-Email-Scheduling-Task)  
+**Environment:** Live Vercel Edge Deployment (`frontend-phi-coral-phks8tnvr3.vercel.app`), Cloudflare Tunnel Reverse Proxy, Node.js v24.22.1, PostgreSQL 16 (Alpine), Redis 7 (Alpine, AOF enabled), Elasticsearch 8.15.3  
 **Demo Video Deliverable:** [`reachinbox-demo.mp4`](./reachinbox-demo.mp4) (Length: 2m 08s, 1280x720 H.264, 1.43 MB, 10 Chapters, Visible Cursor & On-Screen Section Titles)
 
 ---
