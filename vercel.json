@@ -5,6 +5,14 @@
   "framework": "vite",
   "rewrites": [
     {
+      "source": "/api/:path*",
+      "destination": "https://expects-once-teaching-kitty.trycloudflare.com/api/:path*"
+    },
+    {
+      "source": "/admin/:path*",
+      "destination": "https://expects-once-teaching-kitty.trycloudflare.com/admin/:path*"
+    },
+    {
       "source": "/(.*)",
       "destination": "/index.html"
     }

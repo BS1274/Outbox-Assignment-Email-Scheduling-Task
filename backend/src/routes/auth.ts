@@ -59,7 +59,32 @@ authRouter.post(
       where: { email: normalizedEmail },
     });
     if (existing) {
-      throw new HttpError(409, 'An account with this email address already exists. Please sign in.');
+      if (existing.passwordHash) {
+        throw new HttpError(409, 'An account with this email address already exists. Please sign in.');
+      }
+      // User registered with Google earlier and is now setting a password
+      const salt = await bcrypt.genSalt(10);
+      const passwordHash = await bcrypt.hash(password, salt);
+      const user = await prisma.user.update({
+        where: { id: existing.id },
+        data: {
+          passwordHash,
+          name: name?.trim() || existing.name,
+        },
+      });
+      res.cookie(sessionCookieName, signSession(user.id), sessionCookieOptions());
+      return res.status(200).json({
+        ok: true,
+        user: {
+          id: user.id,
+          email: user.email,
+          name: user.name,
+          avatarUrl: user.avatarUrl,
+          slackConnected: Boolean(user.slackWebhookUrl || user.slackAccessToken),
+          slackTeamName: user.slackTeamName,
+          slackChannel: user.slackChannel,
+        },
+      });
     }
 
     const salt = await bcrypt.genSalt(10);
@@ -112,7 +137,7 @@ authRouter.post(
 
     if (!user.passwordHash) {
       // User registered with Google and has no password set yet
-      throw new HttpError(400, 'This account was registered with Google. Please use Continue with Google.');
+      throw new HttpError(400, 'This account was registered with Google. Please use Continue with Google, or click Sign Up to add a password.');
     }
 
     const matches = await bcrypt.compare(password, user.passwordHash);
