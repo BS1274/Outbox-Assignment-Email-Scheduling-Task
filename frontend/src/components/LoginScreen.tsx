@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { Eye, EyeOff } from 'lucide-react';
-import { api } from '../api';
+import { api, API_BASE } from '../api';
 import type { SessionUser } from '../types';
 
 type Props = {
@@ -96,7 +96,7 @@ export function LoginScreen({ googleConfigured, error, onError, onLogin }: Props
         </h1>
 
         <a
-          href="/api/auth/google"
+          href={`${API_BASE}/api/auth/google`}
           className="w-full bg-[#e6f4ea] hover:bg-[#daf0e0] text-gray-800 font-medium py-2.5 px-4 rounded-xl flex items-center justify-center space-x-3 transition border border-[#d2ead6]"
         >
           <GoogleMark />

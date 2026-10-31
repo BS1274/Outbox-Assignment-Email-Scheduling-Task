@@ -1,5 +1,6 @@
 import { useState, type ReactNode } from 'react';
 import { Activity, ChevronDown, Clock, Inbox, LogOut, Send, Slack } from 'lucide-react';
+import { API_BASE } from '../api';
 import type { Bucket, Sender, SessionUser } from '../types';
 
 type Props = {
@@ -65,7 +66,7 @@ export function Sidebar(props: Props) {
         <div className="space-y-1 pt-4 border-t border-gray-200/60">
           <div className="text-[10px] font-bold text-gray-400 uppercase tracking-wider px-2 mb-2">Utilities</div>
           <a
-            href="/admin/queues"
+            href={`${API_BASE}/admin/queues`}
             target="_blank"
             rel="noreferrer"
             className="w-full flex items-center justify-between px-3 py-2 text-xs font-medium text-gray-600 hover:bg-gray-100 rounded-xl"

@@ -2,6 +2,7 @@
   "name": "reachinbox-email-scheduler",
   "private": true,
   "scripts": {
+    "build": "npm --prefix frontend run build",
     "dev:api": "npm --prefix backend run dev",
     "dev:worker": "npm --prefix backend run dev:worker",
     "dev:web": "npm --prefix frontend run dev",

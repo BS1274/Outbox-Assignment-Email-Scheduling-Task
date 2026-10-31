@@ -1,7 +1,10 @@
 import type { Bucket, EmailJob, EmailStatus, Sender, SessionUser, Summary } from './types';
 
+export const API_BASE = (import.meta.env.VITE_API_BASE_URL || '').replace(/\/$/, '');
+
 async function request<T>(path: string, init?: RequestInit): Promise<T> {
-  const response = await fetch(path, {
+  const url = path.startsWith('http') ? path : `${API_BASE}${path}`;
+  const response = await fetch(url, {
     credentials: 'include',
     headers: {
       'Content-Type': 'application/json',

@@ -1,4 +1,5 @@
 import { Slack, X } from 'lucide-react';
+import { API_BASE } from '../api';
 
 type Props = {
   configured: boolean;
@@ -55,7 +56,7 @@ export function SlackModal(props: Props) {
             )}
             <div className="flex items-center justify-end pt-2">
               <a
-                href="/api/slack/connect"
+                href={`${API_BASE}/api/slack/connect`}
                 className="text-xs font-semibold bg-emerald-600 hover:bg-emerald-500 text-white px-4 py-2 rounded-lg shadow-lg shadow-emerald-600/20 transition"
               >
                 Connect Slack
